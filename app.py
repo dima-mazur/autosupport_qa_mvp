@@ -197,108 +197,141 @@ if uploaded:
 
     col5, col6 = st.columns(2)
     with col5:
-        plt.figure()
-        topic_stats.sort_values('tickets', ascending=False).plot(x='topic', y='tickets', kind='bar', rot=0)
-        plt.title("Кількість тікетів по темам")
-        plt.ylabel("Tickets")
-        st.pyplot(plt.gcf())
-
-    with col6:
-        plt.figure()
-        topic_stats.sort_values('avg_overall', ascending=False).plot(x='topic', y='avg_overall', kind='bar', rot=0)
-        plt.title("Средній Overall по темам")
-        plt.ylabel("Avg overall")
-        st.pyplot(plt.gcf())
-
-    # --------- TTFR Histogram ---------
-    st.subheader("TTFR (сек)")
-
-    df['created_at_user'] = pd.to_datetime(df['created_at_user'], errors='coerce', utc=True)
-    df['created_at_agent'] = pd.to_datetime(df['created_at_agent'], errors='coerce', utc=True)
-
-    delta = df['created_at_agent'] - df['created_at_user']
-    ttfr = delta.dt.total_seconds()  # float с NaN, если где-то NaT
-    ttfr = ttfr.fillna(0).clip(lower=0)  # заменяем NaN и не даём уйти в минус
-
-    # Если вдруг нет данных, покажем инфо и не падём на пустом графике
-    if (ttfr.size == 0) or (ttfr.notna().sum() == 0):
-        st.info("Немає даних для побудови TTFR.")
-    else:
-        plt.figure()
-        pd.Series(ttfr).plot.hist(bins=20, rwidth=0.8)
-        plt.title("Розподіл TTFR (сек)")
-        plt.xlabel("Seconds");
-        plt.ylabel("Count")
-        st.pyplot(plt.gcf())
-
-    # --------- Агентська аналітика ---------
-    st.subheader("Агенти")
-    agent_stats = df.groupby('agent_name').agg(
-        tickets=('conversation_id', 'count'),
-        resolved_rate=('resolved', 'mean'),
-        avg_overall=('overall', 'mean')
-    ).reset_index()
-
-    agent_stats['low_overall_flag'] = (agent_stats['avg_overall'] < LOW_OVERALL).astype(int)
-
-    st.dataframe(agent_stats.sort_values('avg_overall'), use_container_width=True)
-
-    plt.figure()
-    (agent_stats.sort_values('avg_overall', ascending=False)
-     .plot(x='agent_name', y='avg_overall', kind='bar', rot=0))
-
-    if not agent_stats.empty:
-        ordered = agent_stats.sort_values(
-            ordered.columns[-1] if 'avg_overall' not in agent_stats.columns else "avg_overall", ascending=False)
-        # Prefer CSAT if present
-        y_col = "avg_csat" if "avg_csat" in agent_stats.columns else (
-            "avg_overall" if "avg_overall" in agent_stats.columns else None)
-        if y_col is None:
-            pass
+        # Custom plot to avoid label overlap
+        ordered = topic_stats.sort_values('tickets', ascending=False)
+        n_topics = len(ordered)
+        if n_topics <= 12:
+            fig, ax = plt.subplots(figsize=(max(8, n_topics * 0.9), 4), dpi=144)
+            labels_wrapped = [wrap_label(x, 12) for x in ordered['topic'].astype(str)]
+            ax.bar(range(n_topics), ordered['tickets'])
+            ax.set_xticks(range(n_topics))
+            ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+            ax.set_title("Кількість тікетів по темам")
+            ax.set_ylabel("Tickets")
+            ax.set_xlabel("")
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
         else:
-            n_agents = len(ordered)
-            if n_agents <= 12:
-                fig, ax = plt.subplots(figsize=(max(8, n_agents * 0.9), 4), dpi=144)
-                labels_wrapped = [wrap_label(str(x), width=12) for x in ordered["agent_name"]]
-                ax.bar(range(n_agents), ordered[y_col])
-                ax.set_xticks(range(n_agents))
-                ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
-                ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
-                ax.set_ylabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
-                ax.set_xlabel("")
-                if y_col == "avg_csat":
-                    ax.set_ylim(0, 5)
-                fig.tight_layout()
-                st.pyplot(fig, clear_figure=True)
-            else:
-                fig_height = min(2 + 0.45 * n_agents, 18)
-                fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
-                ax.barh(ordered["agent_name"], ordered[y_col])
-                ax.invert_yaxis()
-                ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
-                ax.set_xlabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
-                if y_col == "avg_csat":
-                    ax.set_xlim(0, 5)
-                fig.tight_layout()
-                st.pyplot(fig, clear_figure=True)
+            fig_height = min(2 + 0.45 * n_topics, 18)
+            fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
+            ax.barh(ordered['topic'], ordered['tickets'])
+            ax.invert_yaxis()
+            ax.set_title("Кількість тікетів по темам")
+            ax.set_xlabel("Tickets")
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
+with col6:
+    ordered = topic_stats.sort_values('avg_overall', ascending=False)
+    n_topics = len(ordered)
+    if n_topics <= 12:
+        fig, ax = plt.subplots(figsize=(max(8, n_topics * 0.9), 4), dpi=144)
+        labels_wrapped = [wrap_label(x, 12) for x in ordered['topic'].astype(str)]
+        ax.bar(range(n_topics), ordered['avg_overall'])
+        ax.set_xticks(range(n_topics))
+        ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+        ax.set_title("Средній Overall по темам")
+        ax.set_ylabel("Avg overall")
+        ax.set_xlabel("")
+        fig.tight_layout()
+        st.pyplot(fig, clear_figure=True)
+    else:
+        fig_height = min(2 + 0.45 * n_topics, 18)
+        fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
+        ax.barh(ordered['topic'], ordered['avg_overall'])
+        ax.invert_yaxis()
+        ax.set_title("Средній Overall по темам")
+        ax.set_xlabel("Avg overall")
+        fig.tight_layout()
+        st.pyplot(fig, clear_figure=True)
+    # --------- TTFR Histogram ---------
+st.subheader("TTFR (сек)")
 
-    st.download_button("Завантажити зведення по агентам", agent_stats.to_csv(index=False).encode('utf-8'),
-                       file_name='agent_analytics_avg_overall.csv', mime='text/csv')
+df['created_at_user'] = pd.to_datetime(df['created_at_user'], errors='coerce', utc=True)
+df['created_at_agent'] = pd.to_datetime(df['created_at_agent'], errors='coerce', utc=True)
 
-    # --- NEW: формируем текстовую характеристику и рекомендацию (только для низкого CSAT) ---
-    summaries = []
-    recs = []
-    for i in range(len(df)):
-        s, r = build_summary_and_recommendation(df.iloc[i])
-        summaries.append(s)
-        recs.append(r)
+delta = df['created_at_agent'] - df['created_at_user']
+ttfr = delta.dt.total_seconds()  # float с NaN, если где-то NaT
+ttfr = ttfr.fillna(0).clip(lower=0)  # заменяем NaN и не даём уйти в минус
 
-    df['summary_text'] = summaries
-    df['recommendation'] = recs
+# Если вдруг нет данных, покажем инфо и не падём на пустом графике
+if (ttfr.size == 0) or (ttfr.notna().sum() == 0):
+    st.info("Немає даних для побудови TTFR.")
+else:
+    plt.figure()
+    pd.Series(ttfr).plot.hist(bins=20, rwidth=0.8)
+    plt.title("Розподіл TTFR (сек)")
+    plt.xlabel("Seconds");
+    plt.ylabel("Count")
+    st.pyplot(plt.gcf())
+
+# --------- Агентська аналітика ---------
+st.subheader("Агенти")
+agent_stats = df.groupby('agent_name').agg(
+    tickets=('conversation_id', 'count'),
+    resolved_rate=('resolved', 'mean'),
+    avg_overall=('overall', 'mean')
+).reset_index()
+
+agent_stats['low_overall_flag'] = (agent_stats['avg_overall'] < LOW_OVERALL).astype(int)
+
+st.dataframe(agent_stats.sort_values('avg_overall'), use_container_width=True)
+
+plt.figure()
+(agent_stats.sort_values('avg_overall', ascending=False)
+ .plot(x='agent_name', y='avg_overall', kind='bar', rot=0))
+
+if not agent_stats.empty:
+    ordered = agent_stats.sort_values(
+        ordered.columns[-1] if 'avg_overall' not in agent_stats.columns else "avg_overall", ascending=False)
+    # Prefer CSAT if present
+    y_col = "avg_csat" if "avg_csat" in agent_stats.columns else (
+        "avg_overall" if "avg_overall" in agent_stats.columns else None)
+    if y_col is None:
+        pass
+    else:
+        n_agents = len(ordered)
+        if n_agents <= 12:
+            fig, ax = plt.subplots(figsize=(max(8, n_agents * 0.9), 4), dpi=144)
+            labels_wrapped = [wrap_label(str(x), width=12) for x in ordered["agent_name"]]
+            ax.bar(range(n_agents), ordered[y_col])
+            ax.set_xticks(range(n_agents))
+            ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+            ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
+            ax.set_ylabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
+            ax.set_xlabel("")
+            if y_col == "avg_csat":
+                ax.set_ylim(0, 5)
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
+        else:
+            fig_height = min(2 + 0.45 * n_agents, 18)
+            fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
+            ax.barh(ordered["agent_name"], ordered[y_col])
+            ax.invert_yaxis()
+            ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
+            ax.set_xlabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
+            if y_col == "avg_csat":
+                ax.set_xlim(0, 5)
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
+
+st.download_button("Завантажити зведення по агентам", agent_stats.to_csv(index=False).encode('utf-8'),
+                   file_name='agent_analytics_avg_overall.csv', mime='text/csv')
+
+# --- NEW: формируем текстовую характеристику и рекомендацию (только для низкого CSAT) ---
+summaries = []
+recs = []
+for i in range(len(df)):
+    s, r = build_summary_and_recommendation(df.iloc[i])
+    summaries.append(s)
+    recs.append(r)
+
+df['summary_text'] = summaries
+df['recommendation'] = recs
 
 else:
-    st.info(
-        "Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
+st.info(
+    "Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
 
 import smtplib
 from email.mime.text import MIMEText
