@@ -17,6 +17,10 @@ st.title("Support QA")
 
 uploaded = st.file_uploader("Завантажте CSV", type=["csv"])
 
+if not uploaded:
+    st.info("Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
+    st.stop()
+
 if uploaded:
     df = pd.read_csv(uploaded, dtype=str)
 
