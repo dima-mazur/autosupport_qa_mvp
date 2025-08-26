@@ -220,29 +220,29 @@ if uploaded:
             ax.set_xlabel("Tickets")
             fig.tight_layout()
             st.pyplot(fig, clear_figure=True)
-with col6:
-    ordered = topic_stats.sort_values('avg_overall', ascending=False)
-    n_topics = len(ordered)
-    if n_topics <= 12:
-        fig, ax = plt.subplots(figsize=(max(8, n_topics * 0.9), 4), dpi=144)
-        labels_wrapped = [wrap_label(x, 12) for x in ordered['topic'].astype(str)]
-        ax.bar(range(n_topics), ordered['avg_overall'])
-        ax.set_xticks(range(n_topics))
-        ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
-        ax.set_title("Средній Overall по темам")
-        ax.set_ylabel("Avg overall")
-        ax.set_xlabel("")
-        fig.tight_layout()
-        st.pyplot(fig, clear_figure=True)
-    else:
-        fig_height = min(2 + 0.45 * n_topics, 18)
-        fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
-        ax.barh(ordered['topic'], ordered['avg_overall'])
-        ax.invert_yaxis()
-        ax.set_title("Средній Overall по темам")
-        ax.set_xlabel("Avg overall")
-        fig.tight_layout()
-        st.pyplot(fig, clear_figure=True)
+    with col6:
+        ordered = topic_stats.sort_values('avg_overall', ascending=False)
+        n_topics = len(ordered)
+        if n_topics <= 12:
+            fig, ax = plt.subplots(figsize=(max(8, n_topics * 0.9), 4), dpi=144)
+            labels_wrapped = [wrap_label(x, 12) for x in ordered['topic'].astype(str)]
+            ax.bar(range(n_topics), ordered['avg_overall'])
+            ax.set_xticks(range(n_topics))
+            ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+            ax.set_title("Средній Overall по темам")
+            ax.set_ylabel("Avg overall")
+            ax.set_xlabel("")
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
+        else:
+            fig_height = min(2 + 0.45 * n_topics, 18)
+            fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
+            ax.barh(ordered['topic'], ordered['avg_overall'])
+            ax.invert_yaxis()
+            ax.set_title("Средній Overall по темам")
+            ax.set_xlabel("Avg overall")
+            fig.tight_layout()
+            st.pyplot(fig, clear_figure=True)
     # --------- TTFR Histogram ---------
 st.subheader("TTFR (сек)")
 
