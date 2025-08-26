@@ -258,8 +258,8 @@ from email import encoders
 import io
 
 def send_result_via_email(summary_text, df_csv, recipient_email):
-    EMAIL_SENDER = "your_email@gmail.com"       # твій Gmail
-    EMAIL_PASSWORD = "your_app_password"        # пароль додатку (App Password з Google)
+    EMAIL_SENDER = "mazur.dmi@gmail.com"       # твій Gmail
+    EMAIL_PASSWORD = "pusm khib civv bhsi"        # пароль додатку (App Password з Google)
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
 
