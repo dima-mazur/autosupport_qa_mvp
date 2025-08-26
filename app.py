@@ -276,9 +276,8 @@ agent_stats['low_overall_flag'] = (agent_stats['avg_overall'] < LOW_OVERALL).ast
 
 st.dataframe(agent_stats.sort_values('avg_overall'), use_container_width=True)
 
-plt.figure()
-(agent_stats.sort_values('avg_overall', ascending=False)
- .plot(x='agent_name', y='avg_overall', kind='bar', rot=0))
+# (removed pandas .plot to avoid overlapping labels)
+
 
 if not agent_stats.empty:
     ordered = agent_stats.sort_values(
