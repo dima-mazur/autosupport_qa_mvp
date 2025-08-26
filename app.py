@@ -1,10 +1,15 @@
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import textwrap
 
-STAR_TO_SCORE = {5:10, 4:8, 3:7, 2:5, 1:2, 0:0}
+
+def wrap_label(text: str, width: int = 12) -> str:
+    return "\n".join(textwrap.wrap(str(text), width=width, break_long_words=True, break_on_hyphens=False))
+
+
+STAR_TO_SCORE = {5: 10, 4: 8, 3: 7, 2: 5, 1: 2, 0: 0}
 LOW_OVERALL = 5.0
 
 st.set_page_config(page_title="Support QA — ONE CSV (Simple + Charts)", layout="wide")
@@ -15,7 +20,8 @@ uploaded = st.file_uploader("Завантажте CSV", type=["csv"])
 if uploaded:
     df = pd.read_csv(uploaded, dtype=str)
 
-    required = {'conversation_id','topic','user_text','agent_text','created_at_user','created_at_agent','resolved','user_csat_0_5','agent_name'}
+    required = {'conversation_id', 'topic', 'user_text', 'agent_text', 'created_at_user', 'created_at_agent',
+                'resolved', 'user_csat_0_5', 'agent_name'}
     missing = required - set(df.columns)
     if missing:
         st.error(f"Missing required columns: {', '.join(sorted(missing))}")
@@ -25,6 +31,7 @@ if uploaded:
     df['user_csat_0_5'] = df['user_csat_0_5'].fillna("")
     df['created_at_user'] = pd.to_datetime(df['created_at_user'], errors='coerce')
     df['created_at_agent'] = pd.to_datetime(df['created_at_agent'], errors='coerce')
+
 
     def score_speed(t_user, t_agent):
         try:
@@ -41,31 +48,38 @@ if uploaded:
             return 5
         return 0
 
+
     def score_empathy(text):
         text_l = (text or "").lower()
         markers = [
-            'sorry','apolog','please','thank you','i understand','we understand',
-        'перепрошу','будь ласка','дяку','розумію','спробуємо'
-    ]
+            'sorry', 'apolog', 'please', 'thank you', 'i understand', 'we understand',
+            'перепрошу', 'будь ласка', 'дяку', 'розумію', 'спробуємо'
+        ]
         hits = sum(1 for w in markers if w in text_l)
         return max(0, min(10, hits))
 
+
     def score_correctness(user_text, agent_text):
-        u=(user_text or "").lower(); a=(agent_text or "").lower()
-        topics={'login':['login','log in','sign in','password','403','вхід','увійти','пароль','facebook'],
-                'payment':['paid','charge','payment','paypal','coins','платеж','оплат','монет','refund','receipt'],
-                'progress':['progress','level','restore','віднов','прогрес','рівень','reset','backup'],
-                'luck':['luck','rng','jackpot','rigged','джекпот','rtp','rpt','виграв'],
-                'tech':['crash','freeze','loading','spin button','patch','update','версі','падає','лаги'],
-                'kyc':['kyc','verify','verification','id','utility bill','sweepstake','redeem','вериф','документ']}
-        user_topics = {k for k,kws in topics.items() if any(w in u for w in kws)}
+        u = (user_text or "").lower();
+        a = (agent_text or "").lower()
+        topics = {'login': ['login', 'log in', 'sign in', 'password', '403', 'вхід', 'увійти', 'пароль', 'facebook'],
+                  'payment': ['paid', 'charge', 'payment', 'paypal', 'coins', 'платеж', 'оплат', 'монет', 'refund',
+                              'receipt'],
+                  'progress': ['progress', 'level', 'restore', 'віднов', 'прогрес', 'рівень', 'reset', 'backup'],
+                  'luck': ['luck', 'rng', 'jackpot', 'rigged', 'джекпот', 'rtp', 'rpt', 'виграв'],
+                  'tech': ['crash', 'freeze', 'loading', 'spin button', 'patch', 'update', 'версі', 'падає', 'лаги'],
+                  'kyc': ['kyc', 'verify', 'verification', 'id', 'utility bill', 'sweepstake', 'redeem', 'вериф',
+                          'документ']}
+        user_topics = {k for k, kws in topics.items() if any(w in u for w in kws)}
         overlap = sum(1 for k in user_topics if any(w in a for w in topics[k]))
-        actions = ['reset','refund','credit','restore','reinstall','update','link','verify','escalate','check','clear cache']
+        actions = ['reset', 'refund', 'credit', 'restore', 'reinstall', 'update', 'link', 'verify', 'escalate', 'check',
+                   'clear cache']
         action_hits = sum(1 for w in actions if w in a)
-        base = 4*overlap + min(3, action_hits)
+        base = 4 * overlap + min(3, action_hits)
         if len(a.split()) < 6:
-            base = max(0, base-2)
+            base = max(0, base - 2)
         return max(0, min(10, base))
+
 
     def score_resolution(resolved, agent_text):
         if not resolved:
@@ -79,6 +93,7 @@ if uploaded:
                ['eta', 'today', 'tomorrow', 'завтра', 'сьогодні', 'within 24', '24h', '24 hours', 'ASAP']):
             pts += 3
         return max(0, min(10, pts))
+
 
     def score_csat(stars, resolved):
         if not resolved:
@@ -117,24 +132,22 @@ if uploaded:
         axis=1
     )
 
-
-
-
-
-
     # Compute metrics
     df['speed'] = [score_speed(df.iloc[i]['created_at_user'], df.iloc[i]['created_at_agent']) for i in range(len(df))]
     df['empathy'] = df['agent_text'].apply(score_empathy)
     df['correctness'] = [score_correctness(df.iloc[i]['user_text'], df.iloc[i]['agent_text']) for i in range(len(df))]
-    df['resolution_score'] = [score_resolution(int(df.iloc[i]['resolved']), df.iloc[i]['agent_text']) for i in range(len(df))]
-    df['csat_score_0_10'] = [score_csat(df.iloc[i]['user_csat_0_5'], int(df.iloc[i]['resolved'])) for i in range(len(df))]
+    df['resolution_score'] = [score_resolution(int(df.iloc[i]['resolved']), df.iloc[i]['agent_text']) for i in
+                              range(len(df))]
+    df['csat_score_0_10'] = [score_csat(df.iloc[i]['user_csat_0_5'], int(df.iloc[i]['resolved'])) for i in
+                             range(len(df))]
 
-    df['overall'] = ((df['speed'] + df['empathy'] + df['correctness'] + df['resolution_score'] + df['csat_score_0_10']) / 5).round(2)
+    df['overall'] = ((df['speed'] + df['empathy'] + df['correctness'] + df['resolution_score'] + df[
+        'csat_score_0_10']) / 5).round(2)
 
     st.subheader("Діалоги")
-    st.dataframe(df[['conversation_id','agent_name','topic','resolved','user_csat_0_5',
-        'speed','empathy','correctness','resolution_score','csat_score_0_10','overall',
-        'summary_text','recommendation']].head(101), use_container_width=True)
+    st.dataframe(df[['conversation_id', 'agent_name', 'topic', 'resolved', 'user_csat_0_5',
+                     'speed', 'empathy', 'correctness', 'resolution_score', 'csat_score_0_10', 'overall',
+                     'summary_text', 'recommendation']].head(101), use_container_width=True)
 
     # --------- Глобальні діаграми ---------
     col1, col2 = st.columns(2)
@@ -143,12 +156,13 @@ if uploaded:
         plt.figure()
         df['overall'].plot.hist(bins=10, rwidth=0.8)
         plt.title("Розподілення Overall")
-        plt.xlabel("Overall"); plt.ylabel("Count")
+        plt.xlabel("Overall");
+        plt.ylabel("Count")
         st.pyplot(plt.gcf())
 
     with col2:
         plt.figure()
-        df[['speed','empathy','correctness','resolution_score','csat_score_0_10']].mean().plot.bar(rot=0)
+        df[['speed', 'empathy', 'correctness', 'resolution_score', 'csat_score_0_10']].mean().plot.bar(rot=0)
         plt.title("Середнє значення метрик")
         plt.ylabel("Average")
         st.pyplot(plt.gcf())
@@ -159,24 +173,26 @@ if uploaded:
         plt.figure()
         df['resolved'].astype(int).mean()
         (pd.Series({'Resolved': df['resolved'].astype(int).mean(), 'Unresolved': 1 - df['resolved'].astype(int).mean()})
-            .plot.bar(rot=0))
+         .plot.bar(rot=0))
         plt.title("Частка Resolved / Unresolved")
         plt.ylabel("Share")
         st.pyplot(plt.gcf())
 
     with col4:
         plt.figure()
-        csat_counts = df.loc[df['resolved']==1, 'user_csat_0_5'].replace("", pd.NA).dropna().astype(int).value_counts().sort_index()
-        csat_counts.reindex([0,1,2,3,4,5], fill_value=0).plot.bar(rot=0)
+        csat_counts = df.loc[df['resolved'] == 1, 'user_csat_0_5'].replace("", pd.NA).dropna().astype(
+            int).value_counts().sort_index()
+        csat_counts.reindex([0, 1, 2, 3, 4, 5], fill_value=0).plot.bar(rot=0)
         plt.title("Розподілення CSAT")
-        plt.xlabel("Stars"); plt.ylabel("Count")
+        plt.xlabel("Stars");
+        plt.ylabel("Count")
         st.pyplot(plt.gcf())
 
     # --------- Теми ---------
     st.subheader("Breakdown по темам")
     topic_stats = df.groupby('topic').agg(
-        tickets=('conversation_id','count'),
-        avg_overall=('overall','mean')
+        tickets=('conversation_id', 'count'),
+        avg_overall=('overall', 'mean')
     ).reset_index()
 
     col5, col6 = st.columns(2)
@@ -218,9 +234,9 @@ if uploaded:
     # --------- Агентська аналітика ---------
     st.subheader("Агенти")
     agent_stats = df.groupby('agent_name').agg(
-        tickets=('conversation_id','count'),
-        resolved_rate=('resolved','mean'),
-        avg_overall=('overall','mean')
+        tickets=('conversation_id', 'count'),
+        resolved_rate=('resolved', 'mean'),
+        avg_overall=('overall', 'mean')
     ).reset_index()
 
     agent_stats['low_overall_flag'] = (agent_stats['avg_overall'] < LOW_OVERALL).astype(int)
@@ -229,12 +245,45 @@ if uploaded:
 
     plt.figure()
     (agent_stats.sort_values('avg_overall', ascending=False)
-        .plot(x='agent_name', y='avg_overall', kind='bar', rot=0))
-    plt.title("Average Overall by Agent"); plt.ylabel("Avg overall")
-    st.pyplot(plt.gcf())
+     .plot(x='agent_name', y='avg_overall', kind='bar', rot=0))
+
+    if not agent_stats.empty:
+        ordered = agent_stats.sort_values(
+            ordered.columns[-1] if 'avg_overall' not in agent_stats.columns else "avg_overall", ascending=False)
+        # Prefer CSAT if present
+        y_col = "avg_csat" if "avg_csat" in agent_stats.columns else (
+            "avg_overall" if "avg_overall" in agent_stats.columns else None)
+        if y_col is None:
+            pass
+        else:
+            n_agents = len(ordered)
+            if n_agents <= 12:
+                fig, ax = plt.subplots(figsize=(max(8, n_agents * 0.9), 4), dpi=144)
+                labels_wrapped = [wrap_label(str(x), width=12) for x in ordered["agent_name"]]
+                ax.bar(range(n_agents), ordered[y_col])
+                ax.set_xticks(range(n_agents))
+                ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+                ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
+                ax.set_ylabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
+                ax.set_xlabel("")
+                if y_col == "avg_csat":
+                    ax.set_ylim(0, 5)
+                fig.tight_layout()
+                st.pyplot(fig, clear_figure=True)
+            else:
+                fig_height = min(2 + 0.45 * n_agents, 18)
+                fig, ax = plt.subplots(figsize=(10, fig_height), dpi=144)
+                ax.barh(ordered["agent_name"], ordered[y_col])
+                ax.invert_yaxis()
+                ax.set_title("Average " + ("CSAT" if y_col == "avg_csat" else "Overall") + " by Agent")
+                ax.set_xlabel("Avg " + ("CSAT (0–5)" if y_col == "avg_csat" else "overall"))
+                if y_col == "avg_csat":
+                    ax.set_xlim(0, 5)
+                fig.tight_layout()
+                st.pyplot(fig, clear_figure=True)
 
     st.download_button("Завантажити зведення по агентам", agent_stats.to_csv(index=False).encode('utf-8'),
-        file_name='agent_analytics_avg_overall.csv', mime='text/csv')
+                       file_name='agent_analytics_avg_overall.csv', mime='text/csv')
 
     # --- NEW: формируем текстовую характеристику и рекомендацию (только для низкого CSAT) ---
     summaries = []
@@ -248,7 +297,8 @@ if uploaded:
     df['recommendation'] = recs
 
 else:
-    st.info("Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
+    st.info(
+        "Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
 
 import smtplib
 from email.mime.text import MIMEText
@@ -257,9 +307,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 import io
 
+
 def send_result_via_email(summary_text, df_csv, recipient_email):
-    EMAIL_SENDER = "mazur.dmi@gmail.com"       # твій Gmail
-    EMAIL_PASSWORD = "pusm khib civv bhsi"        # пароль додатку (App Password з Google)
+    EMAIL_SENDER = "mazur.dmi@gmail.com"  # твій Gmail
+    EMAIL_PASSWORD = "pusm khib civv bhsi"  # пароль додатку (App Password з Google)
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
 
