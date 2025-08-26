@@ -331,9 +331,8 @@ for i in range(len(df)):
 df['summary_text'] = summaries
 df['recommendation'] = recs
 
-else:
-st.info(
-    "Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
+if not uploaded:
+    st.info("Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
 
 import smtplib
 from email.mime.text import MIMEText
