@@ -220,6 +220,7 @@ if uploaded:
             ax.set_xlabel("Tickets")
             fig.tight_layout()
             st.pyplot(fig, clear_figure=True)
+
     with col6:
         ordered = topic_stats.sort_values('avg_overall', ascending=False)
         n_topics = len(ordered)
@@ -243,27 +244,29 @@ if uploaded:
             ax.set_xlabel("Avg overall")
             fig.tight_layout()
             st.pyplot(fig, clear_figure=True)
+
     # --------- TTFR Histogram ---------
-st.subheader("TTFR (сек)")
+    st.subheader("TTFR (сек)")
 
-df['created_at_user'] = pd.to_datetime(df['created_at_user'], errors='coerce', utc=True)
-df['created_at_agent'] = pd.to_datetime(df['created_at_agent'], errors='coerce', utc=True)
+    if 'created_at_user' in df.columns and 'created_at_agent' in df.columns:
+        df['created_at_user'] = pd.to_datetime(df['created_at_user'], errors='coerce', utc=True)
+        df['created_at_agent'] = pd.to_datetime(df['created_at_agent'], errors='coerce', utc=True)
 
-delta = df['created_at_agent'] - df['created_at_user']
-ttfr = delta.dt.total_seconds()  # float с NaN, если где-то NaT
-ttfr = ttfr.fillna(0).clip(lower=0)  # заменяем NaN и не даём уйти в минус
+        delta = df['created_at_agent'] - df['created_at_user']
+        ttfr = delta.dt.total_seconds()
+        ttfr = ttfr.fillna(0).clip(lower=0)
 
-# Если вдруг нет данных, покажем инфо и не падём на пустом графике
-if (ttfr.size == 0) or (ttfr.notna().sum() == 0):
-    st.info("Немає даних для побудови TTFR.")
-else:
-    plt.figure()
-    pd.Series(ttfr).plot.hist(bins=20, rwidth=0.8)
-    plt.title("Розподіл TTFR (сек)")
-    plt.xlabel("Seconds");
-    plt.ylabel("Count")
-    st.pyplot(plt.gcf())
-
+        if (ttfr.size == 0) or (ttfr.notna().sum() == 0):
+            st.info("Немає даних для побудови TTFR.")
+        else:
+            plt.figure()
+            pd.Series(ttfr).plot.hist(bins=20, rwidth=0.8)
+            plt.title("Розподіл TTFR (сек)")
+            plt.xlabel("Seconds")
+            plt.ylabel("Count")
+            st.pyplot(plt.gcf())
+    else:
+        st.info("У CSV немає колонок created_at_user / created_at_agent — графік TTFR пропущено.")
 # --------- Агентська аналітика ---------
 st.subheader("Агенти")
 agent_stats = df.groupby('agent_name').agg(
@@ -328,6 +331,9 @@ for i in range(len(df)):
 df['summary_text'] = summaries
 df['recommendation'] = recs
 
+else:
+st.info(
+    "Завантажте один CSV: conversation_id, topic, user_text, agent_text, created_at_user, created_at_agent, resolved, user_csat_0_5, agent_name")
 
 import smtplib
 from email.mime.text import MIMEText
@@ -395,5 +401,3 @@ if uploaded:
                 st.error(f"❌ Помилка при відправці: {e}")
         else:
             st.warning("Будь ласка, введіть e-mail")
-
-
