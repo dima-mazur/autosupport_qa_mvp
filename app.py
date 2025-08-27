@@ -99,7 +99,7 @@ if uploaded:
         return max(0, min(10, pts))
 
 
-    def score_csat(stars, resolved):
+    #def score_csat(stars, resolved):
         if not resolved:
             return 0
         try:
@@ -142,16 +142,16 @@ if uploaded:
     df['correctness'] = [score_correctness(df.iloc[i]['user_text'], df.iloc[i]['agent_text']) for i in range(len(df))]
     df['resolution_score'] = [score_resolution(int(df.iloc[i]['resolved']), df.iloc[i]['agent_text']) for i in
                               range(len(df))]
-    df['csat_score_0_10'] = [score_csat(df.iloc[i]['user_csat_0_5'], int(df.iloc[i]['resolved'])) for i in
-                             range(len(df))]
+    #df['csat_score_0_10'] = [score_csat(df.iloc[i]['user_csat_0_5'], int(df.iloc[i]['resolved'])) for i in
+                             #range(len(df))]
 
-    df['overall'] = ((df['speed'] + df['empathy'] + df['correctness'] + df['resolution_score'] + df[
-        'csat_score_0_10']) / 5).round(2)
+    df['overall'] = ((df['speed'] + df['empathy'] + df['correctness'] + df['resolution_score']/5).round(2))
 
     st.subheader("Діалоги")
     st.dataframe(df[['conversation_id', 'agent_name', 'topic', 'resolved', 'user_csat_0_5',
-                     'speed', 'empathy', 'correctness', 'resolution_score', 'csat_score_0_10', 'overall',
+                     'speed', 'empathy', 'correctness', 'resolution_score', 'overall',
                      'summary_text', 'recommendation']].head(101), use_container_width=True)
+
 
     # --------- Глобальні діаграми ---------
     col1, col2 = st.columns(2)
@@ -166,7 +166,7 @@ if uploaded:
 
     with col2:
         plt.figure()
-        df[['speed', 'empathy', 'correctness', 'resolution_score', 'csat_score_0_10']].mean().plot.bar(rot=0)
+        df[['speed', 'empathy', 'correctness', 'resolution_score']].mean().plot.bar(rot=0)
         plt.title("Середнє значення метрик")
         plt.ylabel("Average")
         st.pyplot(plt.gcf())
